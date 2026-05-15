@@ -11,7 +11,7 @@ class TruyenSS implements Plugin.PluginBase {
   name = 'TruyenSS';
   icon = 'src/vi/truyenss/icon.png';
   site = 'https://truyenss.com';
-  version = '1.0.0';
+  version = '1.0.1';
 
   imageRequestInit: Plugin.ImageRequestInit = {
     headers: { Referer: this.site + '/' },
@@ -211,14 +211,12 @@ class TruyenSS implements Plugin.PluginBase {
     const chuong = m[2]!;
     const referer = `${this.site}/truyen/${folder}`;
 
-    const body = await fetchApi(`${this.site}/layout/xem-chuong.php`, {
-      method: 'POST',
+    const qs = new URLSearchParams({ folder, chuong }).toString();
+    const body = await fetchApi(`${this.site}/layout/xem-chuong.php?${qs}`, {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
         'X-Requested-With': 'XMLHttpRequest',
         Referer: referer,
       },
-      body: new URLSearchParams({ folder, chuong }).toString(),
     }).then(r => r.text());
 
     if (!body.trim()) {
