@@ -223,7 +223,18 @@ class TruyenSS implements Plugin.PluginBase {
       '#inner-page .position-relative.mt-4 .line-height-3',
     ).first();
     if (intro.length) {
-      novel.summary = intro.text().replace(/\s+/g, ' ').trim();
+      const block = intro.clone();
+      block.find('script, style').remove();
+      block.find('br').replaceWith('\n');
+      block.find('p').before('\n').after('\n\n');
+      novel.summary = block
+        .text()
+        .split('\n')
+        .map(line => line.replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
     }
 
     novel.chapters = this.parseChapters(loadedCheerio, path);
