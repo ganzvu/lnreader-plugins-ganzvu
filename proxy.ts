@@ -295,8 +295,7 @@ proxy.on('proxyRes', function (proxyRes, req, res) {
       } catch (err) {
         console.error(err);
         res.statusCode = 500;
-        const kind = isBrotli ? 'Brotli' : isZstd ? 'zstd' : 'gzip';
-        res.end(`Error decompressing ${kind} content`);
+        res.end(`Error decompressing ${isBrotli ? 'Brotli' : 'GZIP'} content`);
       }
     });
   } else {
