@@ -1,5 +1,5 @@
-import { CheerioAPI, load as parseHTML } from 'cheerio';
-import { defaultCover } from '@libs/defaultCover';
+import { CheerioAPI, load as parseHTML, type Cheerio } from 'cheerio';
+import type { Element } from 'domhandler';
 import { fetchApi } from '@libs/fetch';
 import { FilterTypes, Filters } from '@libs/filterInputs';
 import { NovelStatus } from '@libs/novelStatus';
@@ -58,6 +58,40 @@ class TruyenSS implements Plugin.PluginBase {
     },
   } satisfies Filters;
 
+  /** Matches LNReader's built-in placeholder file; raw URL tends to load more reliably with plugin Referer headers than blob URLs. */
+  private readonly browseFallbackCover =
+    'https://raw.githubusercontent.com/lnreader/lnreader-plugins/master/public/static/coverNotAvailable.webp';
+
+  private absolutizeCoverUrl(raw: string): string | undefined {
+    const u = raw.trim();
+    if (!u || u.startsWith('data:')) return undefined;
+    if (u.startsWith('//')) return 'https:' + u;
+    if (u.startsWith('http')) return u;
+    return this.site + (u.startsWith('/') ? u : '/' + u);
+  }
+
+  private coverFromTruyenAnchor(
+    loadedCheerio: CheerioAPI,
+    el: Element,
+  ): string {
+    const $a = loadedCheerio(el);
+    const fromImg = (img: Cheerio<Element>) => {
+      const src =
+        img.attr('data-src') || img.attr('data-lazy-src') || img.attr('src');
+      if (!src) return undefined;
+      return this.absolutizeCoverUrl(src);
+    };
+
+    const inner = fromImg($a.find('img'));
+    if (inner) return inner;
+
+    const parentImg = $a.parent().children('img').first();
+    const sibling = fromImg(parentImg);
+    if (sibling) return sibling;
+
+    return this.browseFallbackCover;
+  }
+
   private collectTruyenLinks(loadedCheerio: CheerioAPI): Plugin.NovelItem[] {
     const novels: Plugin.NovelItem[] = [];
     const seen = new Set<string>();
@@ -69,7 +103,8 @@ class TruyenSS implements Plugin.PluginBase {
       seen.add(path);
       const name = loadedCheerio(el).text().replace(/\s+/g, ' ').trim();
       if (!name) return;
-      novels.push({ path, name, cover: defaultCover });
+      const cover = this.coverFromTruyenAnchor(loadedCheerio, el);
+      novels.push({ path, name, cover });
     });
     return novels;
   }
@@ -152,7 +187,7 @@ class TruyenSS implements Plugin.PluginBase {
       ? cover.startsWith('http')
         ? cover
         : this.site + cover
-      : defaultCover;
+      : this.browseFallbackCover;
 
     const infoBlock = loadedCheerio('.info_truyen').first();
     const infoText = infoBlock.text();
